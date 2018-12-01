@@ -3,6 +3,7 @@ use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
+use std::collections::HashSet;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = env::args().collect();
@@ -30,10 +31,14 @@ fn resulting_frequency(freq_changes: &[i32]) -> i32 {
 }
 
 fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
+  let mut seen = HashSet::new();
   let mut freq = 0;
   for change in freq_changes.iter().cycle() {
+    seen.insert(freq);
     freq += change;
-    println!("{}", freq);
+    if seen.contains(freq) {
+      return freq;
+    }
   }
   0
 }

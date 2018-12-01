@@ -30,8 +30,10 @@ fn resulting_frequency(freq_changes: &[i32]) -> i32 {
 }
 
 fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
+  let mut freq = 0;
   for change in freq_changes.iter().cycle() {
-    println!("{}", change);
+    freq += change;
+    println!("{}", freq);
   }
   0
 }

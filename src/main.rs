@@ -4,6 +4,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 use std::collections::HashSet;
+use std::iter::FromIterator;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = env::args().collect();

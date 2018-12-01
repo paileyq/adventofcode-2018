@@ -38,8 +38,7 @@ fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
       *freq += change;
       Some(*freq)
     })
-    .take_while(|freq| seen.replace(freq.clone()).is_none() )
-    .last()
+    .find(|freq| seen.replace(freq.clone()).is_some())
     .unwrap()
 }
 

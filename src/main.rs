@@ -31,7 +31,7 @@ fn resulting_frequency(freq_changes: &[i32]) -> i32 {
 
 fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
   for change in freq_changes.iter() {
-    println!(change);
+    println!("{}", change);
   }
 }
 

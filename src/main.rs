@@ -10,13 +10,12 @@ fn main() -> io::Result<()> {
   let file = File::open(&args[1])?;
   let reader = BufReader::new(file);
 
-  let mut total = 0;
+  let mut freq: i32 = 0;
 
   for line in reader.lines() {
-    let freq: i32 = line?.parse().unwrap();
-    total += freq;
+    freq += line?.parse().unwrap();
   }
 
-  println!("Resulting frequency: {}", total);
+  println!("Resulting frequency: {}", freq);
   Ok(())
 }

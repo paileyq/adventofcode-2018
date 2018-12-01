@@ -39,8 +39,7 @@ fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
       Some(*freq)
     })
     .take_while(|freq| seen.replace(freq.clone()).is_none() )
-    .for_each(|freq| println!("{}", freq));
-  0
+    .last()
 }
 
 #[cfg(test)]

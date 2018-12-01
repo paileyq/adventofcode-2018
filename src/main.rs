@@ -14,7 +14,7 @@ fn main() -> io::Result<()> {
     line.unwrap().parse().unwrap()
   ).collect();
 
-  println!("Resulting frequency: {}", resulting_frequency(freq_changes));
+  println!("Resulting frequency: {}", resulting_frequency(&freq_changes));
   Ok(())
 }
 

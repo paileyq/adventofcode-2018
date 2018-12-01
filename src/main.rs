@@ -14,6 +14,8 @@ fn main() -> io::Result<()> {
     line.unwrap().parse().unwrap()
   ).collect();
 
-  println!("{:?}", freq_changes);
+  let freq = freq_changes.sum();
+
+  println!("Resulting frequency: {}", freq);
   Ok(())
 }

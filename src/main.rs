@@ -8,7 +8,7 @@ fn main() -> io::Result<()> {
   let reader = BufReader::new(file);
 
   for line in reader.lines() {
-    println!("{}", line);
+    println!("{}", line?);
   }
   Ok(())
 }

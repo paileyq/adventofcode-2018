@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::fs::File;
 
 fn main() -> io::Result<()> {
-  let args = env::args().collect();
+  let args: Vec<String> = env::args().collect();
 
   let file = File::open(&args[1])?;
   let reader = BufReader::new(file);

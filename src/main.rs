@@ -14,10 +14,21 @@ fn main() -> io::Result<()> {
     line.unwrap().parse().unwrap()
   ).collect();
 
-  println!("Resulting frequency: {}", resulting_frequency(&freq_changes));
+  println!(
+    "Resulting frequency: {}",
+    resulting_frequency(&freq_changes)
+  );
+  println!(
+    "First frequency reached twice: {}",
+    first_frequency_reached_twice(&freq_changes)
+  );
   Ok(())
 }
 
 fn resulting_frequency(freq_changes: &[i32]) -> i32 {
   freq_changes.iter().sum()
+}
+
+fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
+  0
 }

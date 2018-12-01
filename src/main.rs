@@ -14,8 +14,10 @@ fn main() -> io::Result<()> {
     line.unwrap().parse().unwrap()
   ).collect();
 
-  let freq: i32 = freq_changes.iter().sum();
-
-  println!("Resulting frequency: {}", freq);
+  println!("Resulting frequency: {}", resulting_frequency(freq_changes));
   Ok(())
+}
+
+fn resulting_frequency(freq_changes: Vec<i32>) -> i32 {
+  freq_changes.iter().sum()
 }

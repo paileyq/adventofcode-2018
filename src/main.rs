@@ -18,6 +18,6 @@ fn main() -> io::Result<()> {
   Ok(())
 }
 
-fn resulting_frequency(freq_changes: Vec<i32>) -> i32 {
+fn resulting_frequency(freq_changes: &[i32]) -> i32 {
   freq_changes.iter().sum()
 }

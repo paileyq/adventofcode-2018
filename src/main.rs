@@ -36,7 +36,7 @@ fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
   for change in freq_changes.iter().cycle() {
     seen.insert(freq);
     freq += change;
-    if seen.contains(freq) {
+    if seen.contains(&freq) {
       return freq;
     }
   }

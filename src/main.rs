@@ -1,8 +1,9 @@
+use std::io;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
 
-fn main() {
+fn main() -> io::Result<()> {
   let file = File::open("../input/input01")?;
   let reader = BufReader::new(file);
 

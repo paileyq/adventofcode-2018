@@ -34,7 +34,7 @@ fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
   let mut seen = HashSet::new();
   let mut freq = 0;
   for change in freq_changes.iter().cycle() {
-    seen.insert(freq);
+    seen.replace(freq);
     freq += change;
     if seen.contains(&freq) {
       return freq;

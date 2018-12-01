@@ -9,4 +9,5 @@ fn main() {
   for line in reader.lines() {
     println!("{}", line);
   }
+  Ok(())
 }

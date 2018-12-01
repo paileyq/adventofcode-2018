@@ -4,7 +4,7 @@ use std::io::BufReader;
 use std::fs::File;
 
 fn main() -> io::Result<()> {
-  let file = File::open("../input/input01")?;
+  let file = File::open("../input/input99")?;
   let reader = BufReader::new(file);
 
   for line in reader.lines() {

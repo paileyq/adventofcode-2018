@@ -1,11 +1,31 @@
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-pub fn resulting_frequency(freq_changes: &[i32]) -> i32 {
+pub fn solve(input_file: File) {
+  let reader = BufReader::new(input_file);
+
+  let freq_changes: Vec<i32> = reader.lines().map(|line|
+    line.unwrap().parse().unwrap()
+  ).collect();
+
+  println!(
+    "Resulting frequency: {}",
+    resulting_frequency(&freq_changes)
+  );
+  println!(
+    "First frequency reached twice: {}",
+    first_frequency_reached_twice(&freq_changes)
+  );
+}
+
+fn resulting_frequency(freq_changes: &[i32]) -> i32 {
   freq_changes.iter().sum()
 }
 
-pub fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
+fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
   let mut seen: HashSet<i32> = HashSet::from_iter(vec![0]);
 
   freq_changes.iter()

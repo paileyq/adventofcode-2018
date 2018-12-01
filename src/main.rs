@@ -11,7 +11,7 @@ fn main() -> io::Result<()> {
   let reader = BufReader::new(file);
 
   for line in reader.lines() {
-    let freq: i32 = line?.parse();
+    let freq: i32 = line?.parse().unwrap();
     println!("{}", freq);
   }
   Ok(())

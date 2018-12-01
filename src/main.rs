@@ -32,13 +32,14 @@ fn resulting_frequency(freq_changes: &[i32]) -> i32 {
 
 fn first_frequency_reached_twice(freq_changes: &[i32]) -> i32 {
   let mut seen = HashSet::new();
+  seen.insert(0);
   freq_changes.iter()
     .cycle()
     .scan(0, |freq, &change| {
       *freq += change;
       Some(*freq)
     })
-    .find(|freq| { println!("{}", freq); seen.replace(freq.clone()).is_some() })
+    .find(|freq| seen.replace(freq.clone()).is_some())
     .unwrap()
 }
 

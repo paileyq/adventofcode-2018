@@ -49,7 +49,16 @@ mod tests {
   use super::*;
 
   #[test]
+  fn test_resulting_frequency() {
+    assert_eq!(3, resulting_frequency(&[1, -2, 3, 1]));
+    assert_eq!(3, resulting_frequency(&[1, 1, 1]));
+    assert_eq!(0, resulting_frequency(&[1, 1, -2]));
+    assert_eq!(-6, resulting_frequency(&[-1, -2, -3]));
+  }
+
+  #[test]
   fn test_first_frequency_reached_twice() {
+    assert_eq!(2, first_frequency_reached_twice(&[1, -2, 3, 1]));
     assert_eq!(0, first_frequency_reached_twice(&[1, -1]));
     assert_eq!(10, first_frequency_reached_twice(&[3, 3, 4, -2, -4]));
     assert_eq!(5, first_frequency_reached_twice(&[-6, 3, 8, 5, -6]));

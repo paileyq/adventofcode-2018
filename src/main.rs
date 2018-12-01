@@ -40,5 +40,6 @@ mod tests {
   #[test]
   fn test_first_frequency_reached_twice() {
     assert_eq!(0, first_frequency_reached_twice(&[1, -1]));
+    assert_eq!(10, first_frequency_reached_twice(&[3, 3, 4, -2, -4]));
   }
 }

@@ -11,7 +11,7 @@ fn main() -> io::Result<()> {
   let reader = BufReader::new(file);
 
   let freq_changes: Vec<i32> = reader.lines().map(|line|
-    line?.parse::<i32>().unwrap()
+    line.unwrap().parse::<i32>().unwrap()
   ).collect();
 
   println!("{:?}", freq_changes);

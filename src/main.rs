@@ -18,7 +18,7 @@ fn main() -> io::Result<()> {
 
   let file = match args.len() {
     3 => File::open(&args[2]),
-    _ => File::open(format!("../input/input{:02}", day_number))
+    _ => File::open(format!("input/input{:02}", day_number))
   }.expect("input file doesn't exist");
 
   match day_number {

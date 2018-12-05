@@ -4,6 +4,7 @@ use std::fs::File;
 use std::process;
 
 mod day01;
+mod day02;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = env::args().collect();
@@ -23,6 +24,7 @@ fn main() -> io::Result<()> {
 
   match day_number {
     1 => day01::solve(file),
+    2 => day02::solve(file),
     _ => panic!("Day {} not implemented yet", day_number)
   };
 

@@ -7,6 +7,7 @@ What I'm trying to say is that I'm going to take it easy and learn [Rust](https:
 ## Blog
 
 1. [Chronal Calibration](blog/01-chronal-calibration.md)
+1. [Inventory Management System](blog/02-inventory-management-system.md)
 
 ## Usage
 

@@ -219,3 +219,310 @@ pub fn solve(input_file: File) {
 ```
 
 +1 gold star!
+
+## Part 2
+
+Ah, now it's time to find those boxes.
+
+So we need to find two box IDs that differ by exactly one character. Let's write a function that takes two strings and returns `true` if they are equal except for exactly 1 character. We'll call it `almost_equal()`. Here are some test cases:
+
+```rust
+#[test]
+fn test_almost_equal() {
+  assert!(!almost_equal("abcde", "abcde"));
+  assert!(!almost_equal("abcde", "axcye"));
+  assert!(!almost_equal("abcde", "bcdea"));
+  assert!(!almost_equal("abcde", "abcd"));
+  assert!(!almost_equal("a", "a"));
+
+  assert!(almost_equal("abcde", "xbcde"));
+  assert!(almost_equal("abcde", "axcde"));
+  assert!(almost_equal("abcde", "abxde"));
+  assert!(almost_equal("abcde", "abcxe"));
+  assert!(almost_equal("abcde", "abcdx"));
+  assert!(almost_equal("fghij", "fguij"));
+  assert!(almost_equal("a", "b"));
+}
+```
+
+I'm so excited to use [`zip()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.zip)!
+
+```rust
+fn almost_equal(left: &str, right: &str) -> bool {
+  let mut found_differing_chars = false;
+  for (l, r) in left.chars().zip(right.chars()) {
+    if l != r {
+      if found_differing_chars {
+        return false;
+      } else {
+        found_differing_chars = true;
+      }
+    }
+  }
+  return found_differing_chars;
+}
+```
+
+Checking if two strings are "almost equal" is similar to checking if they are equal: you compare each pair of characters from the strings one at a time. Except when you find two differing characters, instead of returning `false` immediately you record that you found a differing characters, and then make sure there are no differing characters for the rest of the string.
+
+By zipping the `left` and `right` strings, we get an iterator that loops through both strings in parallel, yielding each pair of characters.
+
+This passes all the tests! But I just realized I missed a case. If one string is longer than the other, `zip()` throws away the excess characters of the longer string. So if the strings are "almost equal" up to that point, they will be reported as equal. But I don't think strings of different lengths should ever be "almost equal". (Not that it matters to the puzzle we're solving, where all the input strings are the same length...) Let's add a failing test case:
+
+```rust
+assert!(!almost_equal("abcde", "abcx"));
+```
+
+To get that to pass, I think we'll just have to add an `if` statement to the top of the function that returns `false` early if the lengths are different.
+
+```rust
+fn almost_equal(left: &str, right: &str) -> bool {
+  if left.len() != right.len() {
+    return false;
+  }
+
+  // --snip--
+}
+```
+
+Now, as always, I feel the need to refactor the `for` loop and mutable state variable into a functional style chain of iterators. Here's my first attempt:
+
+```rust
+left.chars().zip(right.chars())
+  .skip_while(|(l, r)| l == r)
+  .all(|(l, r)| l == r)
+```
+
+This doesn't quite work, but I think the right idea is there. We skip pairs of characters until we get two characters that are different. From that point on, all characters must be equal. This is failing the tests for at least two reasons:
+
+1. `skip_while()` doesn't skip the failure case, so the first thing yielded to `all()` is the pair of characters that differ, so `all()` will immediately return `false`.
+2. If the two strings happen to be equal, `skip_while()` will consume the whole strings and `all()` will be left with an empty iterator, which causes it to return `true`. But we want `false` in that case.
+
+So, unfortunately we're going to have to split this expression up into multiple statements I think.
+
+```rust
+fn almost_equal(left: &str, right: &str) -> bool {
+  if left.len() != right.len() {
+    return false;
+  }
+
+  let mut rest = left.chars().zip(right.chars())
+    .skip_while(|(l, r)| l == r);
+
+  match rest.next() {
+    Some(_) => rest.all(|(l, r)| l == r),
+    None => false
+  }
+}
+```
+
+Nice, that took care of both issues! I had to read up on how to manipulate iterators in a more manual fashion by calling `next()` directly. `next()` advances the iterator (which must be mutable) and returns `Some(value)` if there was a next value, and `None` otherwise. That let's us consume the pair of differing characters, and if there were differing characters, check if the rest of the characters are equal using `all()`.
+
+OK, now that we have `almost_equal()`, let's find the two box IDs that are almost equal! Here's the test case, from the puzzle description:
+
+```rust
+#[test]
+fn test_find_almost_equal_pair() {
+  let box_ids = &[
+    "abcde",
+    "fghij",
+    "klmno",
+    "pqrst",
+    "fguij",
+    "axcye",
+    "wvxyz"
+  ];
+
+  assert_eq!("fgij", find_almost_equal_pair(box_ids));
+}
+```
+
+My plan for this is to just compare each string to every string that comes after it using a nested `for` loop.
+
+```rust
+fn find_almost_equal_pair<T: AsRef<str>>(box_ids: &[T]) -> Option<String> {
+  for (index, box_id) in box_ids.iter().enumerate() {
+    for other_box_id in box_ids[index+1..].iter() {
+      if almost_equal(box_id.as_ref(), other_box_id.as_ref()) {
+        return Some(
+          box_id.as_ref().chars().zip(other_box_id.as_ref().chars())
+            .filter(|(l, r)| l == r)
+            .map(|(l, _)| l)
+            .collect()
+        );
+      }
+    }
+  }
+  None
+}
+```
+
+Those `as_ref()`s really clutter things up...
+
+Once we find the almost equal pair of strings, we want to return a string containing all the matching characters but omitting the pair of differing characters, as the puzzle requests. To do that we `filter()` out pairs of differing characters, then `map()` to get an iterator of single characters which we `collect()` into a `String` which we then return.
+
+Halfway through I realized it's going to need to return an `Option`. So the assert in the test now looks like this:
+
+```rust
+assert_eq!(Some("fgij".to_string()), find_almost_equal_pair(box_ids));
+```
+
+Just for fun, I want to try out `unzip()` to see how that works.
+
+```rust
+return Some(
+  box_id.as_ref().chars().zip(other_box_id.as_ref().chars())
+    .filter(|(l, r)| l == r)
+    .unzip::<char, char, String, String>()
+    .0
+);
+```
+
+Well, it works! The 4 type params you seem to have to pass makes it not worth it to me though.
+
+Time to get that gold star now!
+
+```rust
+println!(
+  "Matching box ID common letters: {}",
+  find_almost_equal_pair(&box_ids).unwrap()
+);
+```
+
+Got it. Here is my final code for day 2:
+
+```rust
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::collections::HashMap;
+
+pub fn solve(input_file: File) {
+  let reader = BufReader::new(input_file);
+
+  let box_ids: Vec<String> = reader.lines().flatten().collect();
+
+  println!("Checksum: {}", get_checksum(&box_ids));
+  println!(
+    "Matching box ID common letters: {}",
+    find_almost_equal_pair(&box_ids).unwrap()
+  );
+}
+
+fn get_checksum<T: AsRef<str>>(box_ids: &[T]) -> usize {
+  let mut num_containing_two = 0;
+  let mut num_containing_three = 0;
+
+  for box_id in box_ids.iter() {
+    let freq = char_frequency(box_id.as_ref());
+
+    if freq.values().any(|&count| count == 2) {
+      num_containing_two += 1;
+    }
+    if freq.values().any(|&count| count == 3) {
+      num_containing_three += 1;
+    }
+  }
+
+  return num_containing_two * num_containing_three;
+}
+
+fn char_frequency(string: &str) -> HashMap<char, usize> {
+  string.chars().fold(HashMap::new(), |mut freq, letter| {
+    *freq.entry(letter).or_insert(0) += 1;
+    freq
+  })
+}
+
+fn find_almost_equal_pair<T: AsRef<str>>(box_ids: &[T]) -> Option<String> {
+  for (index, box_id) in box_ids.iter().enumerate() {
+    for other_box_id in box_ids[index+1..].iter() {
+      if almost_equal(box_id.as_ref(), other_box_id.as_ref()) {
+        return Some(
+          box_id.as_ref().chars().zip(other_box_id.as_ref().chars())
+            .filter(|(l, r)| l == r)
+            .map(|(l, _)| l)
+            .collect()
+        );
+      }
+    }
+  }
+  None
+}
+
+fn almost_equal(left: &str, right: &str) -> bool {
+  if left.len() != right.len() {
+    return false;
+  }
+
+  let mut rest = left.chars().zip(right.chars())
+    .skip_while(|(l, r)| l == r);
+
+  match rest.next() {
+    Some(_) => rest.all(|(l, r)| l == r),
+    None => false
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_get_checksum() {
+    let box_ids = &[
+      "abcdef",
+      "bababc",
+      "abbcde",
+      "abcccd",
+      "aabcdd",
+      "abcdee",
+      "ababab"
+    ];
+
+    assert_eq!(12, get_checksum(box_ids));
+  }
+
+  #[test]
+  fn test_char_frequency() {
+    let freq = char_frequency("bababc");
+
+    assert_eq!(2, freq[&'a']);
+    assert_eq!(3, freq[&'b']);
+    assert_eq!(1, freq[&'c']);
+    assert_eq!(None, freq.get(&'d'));
+  }
+
+  #[test]
+  fn test_find_almost_equal_pair() {
+    let box_ids = &[
+      "abcde",
+      "fghij",
+      "klmno",
+      "pqrst",
+      "fguij",
+      "axcye",
+      "wvxyz"
+    ];
+
+    assert_eq!(Some("fgij".to_string()), find_almost_equal_pair(box_ids));
+  }
+
+  #[test]
+  fn test_almost_equal() {
+    assert!(!almost_equal("abcde", "abcde"));
+    assert!(!almost_equal("abcde", "axcye"));
+    assert!(!almost_equal("abcde", "bcdea"));
+    assert!(!almost_equal("abcde", "abcx"));
+    assert!(!almost_equal("a", "a"));
+
+    assert!(almost_equal("abcde", "xbcde"));
+    assert!(almost_equal("abcde", "axcde"));
+    assert!(almost_equal("abcde", "abxde"));
+    assert!(almost_equal("abcde", "abcxe"));
+    assert!(almost_equal("abcde", "abcdx"));
+    assert!(almost_equal("fghij", "fguij"));
+    assert!(almost_equal("a", "b"));
+  }
+}
+```

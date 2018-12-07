@@ -5,6 +5,7 @@ use std::process;
 
 mod day01;
 mod day02;
+mod day03;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = env::args().collect();

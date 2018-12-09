@@ -26,6 +26,7 @@ fn main() -> io::Result<()> {
   match day_number {
     1 => day01::solve(file),
     2 => day02::solve(file),
+    3 => day03::solve(file),
     _ => panic!("Day {} not implemented yet", day_number)
   };
 

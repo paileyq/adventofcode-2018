@@ -7,6 +7,7 @@ mod day01;
 mod day02;
 mod day03;
 mod day04;
+mod day05;
 
 fn main() -> io::Result<()> {
   let args: Vec<String> = env::args().collect();
@@ -29,6 +30,7 @@ fn main() -> io::Result<()> {
     2 => day02::solve(file),
     3 => day03::solve(file),
     4 => day04::solve(file),
+    5 => day05::solve(file),
     _ => panic!("Day {} not implemented yet", day_number)
   };
 

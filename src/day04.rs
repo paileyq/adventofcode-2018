@@ -1,6 +1,7 @@
 use chrono::prelude::*;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -13,7 +14,7 @@ enum Event {
   WakeUp
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 struct LogEntry {
   timestamp: DateTime<Utc>,
   event: Event
@@ -60,19 +61,64 @@ impl FromStr for LogEntry {
   }
 }
 
+#[derive(Debug)]
+struct Nap {
+  start: DateTime<Utc>,
+  end: DateTime<Utc>
+}
+
+impl Nap {
+  pub fn len(&self) -> chrono::Duration {
+    self.end - self.start
+  }
+}
+
 pub fn solve(input_file: File) {
   let reader = BufReader::new(input_file);
 
-  let log_entries: Vec<LogEntry> = reader
+  let mut log_entries: Vec<LogEntry> = reader
     .lines()
     .flatten()
     .map(|line| line.parse())
     .flatten()
     .collect();
 
+  log_entries.sort_by_key(|e| e.timestamp);
+
+  let mut naps_by_guard_id: HashMap<u32, Vec<Nap>> = HashMap::new();
+  let mut current_guard_id = None;
+  let mut nap_start = None;
+
   for log_entry in log_entries.iter() {
-    println!("{:?}", log_entry);
+    match log_entry.event {
+      Event::BeginShift(guard_id) => {
+        current_guard_id = Some(guard_id);
+      },
+      Event::FallAsleep => {
+        nap_start = Some(log_entry.timestamp);
+      },
+      Event::WakeUp => {
+        naps_by_guard_id
+          .entry(current_guard_id.unwrap())
+          .or_default()
+          .push(Nap {
+            start: nap_start.unwrap(),
+            end: log_entry.timestamp
+          });
+
+        nap_start = None;
+      }
+    }
   }
+
+  let guard_id = naps_by_guard_id.iter()
+    .max_by_key(|(_, naps)| naps.iter()
+      .map(|nap| nap.len().num_minutes())
+      .sum::<i64>())
+    .unwrap()
+    .0;
+
+  println!("{}", guard_id);
 }
 
 #[cfg(test)]

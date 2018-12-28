@@ -54,6 +54,17 @@ impl Node {
 
     self_sum + children_sum
   }
+
+  pub fn value(&self) -> i32 {
+    if self.children.is_empty() {
+      self.metadata.iter().sum()
+    } else {
+      self.metadata.iter()
+        .filter_map(|&index| self.children.get(index as usize - 1))
+        .map(Node::value)
+        .sum()
+    }
+  }
 }
 
 impl FromStr for Node {
@@ -77,6 +88,7 @@ pub fn solve(input_file: File) {
   let tree: Node = input.parse().unwrap();
 
   println!("Sum of metadata: {}", tree.metadata_sum());
+  println!("Value of tree: {}", tree.value());
 }
 
 #[cfg(test)]
@@ -184,6 +196,13 @@ mod tests {
     let tree = Node::from_ints(&[2, 3, 0, 3, 10, 11, 12, 1, 1, 0, 1, 99, 2, 1, 1, 2]).unwrap();
 
     assert_eq!(tree.metadata_sum(), 138);
+  }
+
+  #[test]
+  fn node_value() {
+    let tree = Node::from_ints(&[2, 3, 0, 3, 10, 11, 12, 1, 1, 0, 1, 99, 2, 1, 1, 2]).unwrap();
+
+    assert_eq!(tree.value(), 66);
   }
 }
 

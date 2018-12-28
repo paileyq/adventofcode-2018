@@ -72,8 +72,8 @@ impl FromStr for Node {
 
   fn from_str(string: &str) -> Result<Node, Self::Err> {
     string.split_whitespace()
-      .map(|num| num.parse())
-      .collect::<Result<Vec<i32>, _>>()
+      .map(i32::from_str)
+      .collect::<Result<Vec<_>, _>>()
       .map_err(|_| "string contains invalid numbers")
       .and_then(|ints| Node::from_ints(&ints))
   }

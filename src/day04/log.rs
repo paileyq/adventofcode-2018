@@ -25,10 +25,6 @@ impl FromStr for LogEntry {
         Regex::new(r"^\[(\d+)-(\d+)-(\d+) (\d+):(\d+)\] (.+)$").unwrap();
       static ref BEGIN_SHIFT_REGEX: Regex =
         Regex::new(r"^Guard #(\d+) begins shift$").unwrap();
-      static ref FALL_ASLEEP_REGEX: Regex =
-        Regex::new(r"^falls asleep$").unwrap();
-      static ref WAKE_UP_REGEX: Regex =
-        Regex::new(r"^wakes up$").unwrap();
     }
 
     if let Some(caps) = LINE_REGEX.captures(s) {
@@ -44,9 +40,9 @@ impl FromStr for LogEntry {
       if let Some(caps) = BEGIN_SHIFT_REGEX.captures(event_str) {
         let guard_id: u32 = caps.get(1).unwrap().as_str().parse().unwrap();
         Ok(LogEntry { timestamp, event: Event::BeginShift(guard_id) })
-      } else if FALL_ASLEEP_REGEX.is_match(event_str) {
+      } else if event_str == "falls asleep" {
         Ok(LogEntry { timestamp, event: Event::FallAsleep })
-      } else if WAKE_UP_REGEX.is_match(event_str) {
+      } else if event_str == "wakes up" {
         Ok(LogEntry { timestamp, event: Event::WakeUp })
       } else {
         Err(())
@@ -59,7 +55,7 @@ impl FromStr for LogEntry {
 
 impl AsRef<LogEntry> for LogEntry {
   fn as_ref(&self) -> &LogEntry {
-    return self;
+    self
   }
 }
 

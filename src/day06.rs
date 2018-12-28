@@ -9,12 +9,12 @@ use std::str::FromStr;
 struct Point(i32, i32);
 
 impl Point {
-  pub fn closest(&self, points: &[Point]) -> Option<Point> {
+  pub fn closest(self, points: &[Point]) -> Option<Point> {
     let mut min_distance = None;
     let mut closest_point = None;
     let mut tied = false;
 
-    for &point in points.iter() {
+    for &point in points {
       let distance = self.manhattan_distance(point);
       if min_distance.is_none() || distance < min_distance.unwrap() {
         min_distance = Some(distance);
@@ -28,13 +28,13 @@ impl Point {
     if tied { None } else { closest_point }
   }
 
-  pub fn total_distance(&self, points: &[Point]) -> i32 {
+  pub fn total_distance(self, points: &[Point]) -> i32 {
     points.iter()
       .map(|&point| self.manhattan_distance(point))
       .sum()
   }
 
-  pub fn manhattan_distance(&self, other: Point) -> i32 {
+  pub fn manhattan_distance(self, other: Point) -> i32 {
     let Point(x1, y1) = self;
     let Point(x2, y2) = other;
 

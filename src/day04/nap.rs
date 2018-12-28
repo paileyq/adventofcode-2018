@@ -47,7 +47,7 @@ impl Iterator for Minutes {
 
 impl AsRef<Nap> for Nap {
   fn as_ref(&self) -> &Nap {
-    return self;
+    self
   }
 }
 

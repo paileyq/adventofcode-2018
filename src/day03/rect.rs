@@ -72,7 +72,7 @@ impl Rectangle {
 
 impl AsRef<Rectangle> for Rectangle {
   fn as_ref(&self) -> &Rectangle {
-    return self;
+    self
   }
 }
 

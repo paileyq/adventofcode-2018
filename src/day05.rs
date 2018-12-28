@@ -26,7 +26,7 @@ impl Atom {
     }
   }
 
-  pub fn reacts_with(&self, other: Atom) -> bool {
+  pub fn reacts_with(self, other: Atom) -> bool {
     self.symbol == other.symbol && self.polarity != other.polarity
   }
 }
@@ -55,7 +55,7 @@ impl Polymer {
     Polymer(
       self.0.iter()
       .filter(|atom| atom.symbol != symbol)
-      .map(|&atom| atom)
+      .cloned()
       .collect()
     )
   }

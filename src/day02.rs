@@ -30,7 +30,7 @@ fn get_checksum<T: AsRef<str>>(box_ids: &[T]) -> usize {
     }
   }
 
-  return num_containing_two * num_containing_three;
+  num_containing_two * num_containing_three
 }
 
 fn char_frequency(string: &str) -> HashMap<char, usize> {

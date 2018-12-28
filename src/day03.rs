@@ -39,7 +39,8 @@ fn find_nonoverlapping_claim<T: AsRef<Rectangle>>(claims: &[T]) -> Option<u32> {
     }
     return Some(rect.as_ref().id);
   }
-  return None;
+
+  None
 }
 
 #[cfg(test)]

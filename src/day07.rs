@@ -35,7 +35,7 @@ impl Worker {
 
   pub fn start(&mut self, step: char) {
     self.step = Some(step);
-    self.time_left = 61 + (step as i32) - (b'A' as i32);
+    self.time_left = 61 + (step as i32) - i32::from(b'A');
   }
 }
 
@@ -67,7 +67,7 @@ pub fn solve(input_file: File) {
 fn simulate(num_workers: i32, dependencies: &HashMap<char, HashSet<char>>) -> (String, i32) {
   let mut workers: Vec<Worker> = (0..num_workers).map(|_| Worker::new()).collect();
 
-  let mut todo: Vec<char> = dependencies.keys().map(|&c| c).collect();
+  let mut todo: Vec<char> = dependencies.keys().cloned().collect();
   todo.sort();
 
   let mut done = String::new();

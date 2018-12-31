@@ -180,25 +180,25 @@ mod tests {
     let next = initial_state.next_generation(&rules);
     assert_eq!(
       format!("{}", next),
-      "0: #...#....#.....#..#..#..#"
+      "(idx 0) #...#....#.....#..#..#..#"
     );
 
     let next = next.next_generation(&rules);
     assert_eq!(
       format!("{}", next),
-      "0: ##..##...##....#..#..#..##"
+      "(idx 0) ##..##...##....#..#..#..##"
     );
 
     let next = next.next_generation(&rules);
     assert_eq!(
       format!("{}", next),
-      "-1: #.#...#..#.#....#..#..#...#"
+      "(idx -1) #.#...#..#.#....#..#..#...#"
     );
 
     let next = next.next_generation(&rules);
     assert_eq!(
       format!("{}", next),
-      "0: #.#..#...#.#...#..#..##..##"
+      "(idx 0) #.#..#...#.#...#..#..##..##"
     );
 
     let mut next = next.next_generation(&rules);
@@ -208,7 +208,7 @@ mod tests {
 
     assert_eq!(
       format!("{}", next),
-      "-2: #....##....#####...#######....#.#..##"
+      "(idx -2) #....##....#####...#######....#.#..##"
     );
 
     assert_eq!(next.sum(), 325);

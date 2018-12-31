@@ -185,9 +185,9 @@ impl Cart {
 impl Display for Cart {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     if self.crashed {
-      write!(f, "\x1b[1;41mX\x1b[m")
+      write!(f, "\x1b[1;31mX\x1b[m")
     } else {
-      write!(f, "\x1b[1;{}m{}\x1b[m", 31 + ((self.id - 1) % 8), self.heading)
+      write!(f, "\x1b[1;{}m{}\x1b[m", 41 + ((self.id - 1) % 7), self.heading)
     }
   }
 }
@@ -233,7 +233,7 @@ impl World {
       }
 
       for index2 in 0..self.carts.len() {
-        if index != index2 && self.carts[index].position() == self.carts[index2].position() {
+        if index != index2 && !self.carts[index2].crashed && self.carts[index].position() == self.carts[index2].position() {
           crash = true;
           self.carts[index].crashed = true;
           self.carts[index2].crashed = true;
@@ -307,27 +307,44 @@ pub fn solve(input_file: File) {
   let mut input = String::new();
   reader.read_to_string(&mut input).unwrap();
 
-  /*let input = String::from(r"
-/->-\
-|   |  /----\
-| /-+--+-\  |
-| | |  | v  |
-\-+-/  \-+--/
-  \------/
-");*/
+  let mut world: World = input.parse().unwrap();
+  let mut first_crash = true;
 
-  let mut world: World = input.trim().parse().unwrap();
+  let delay = time::Duration::from_millis(50);
+  let mut skipping = false;
 
-  print!("\x1b[2J{}", world);
-  while !world.step() {
-    thread::sleep(time::Duration::from_millis(100));
-    print!("\x1b[2J{}", world);
-  }
-  thread::sleep(time::Duration::from_millis(100));
-  print!("\x1b[2J{}", world);
+  loop {
+    if !skipping {
+      print!("\x1b[2J{}", world);
+      thread::sleep(delay);
+    }
 
-  if let Some(Cart { x, y, .. }) = world.carts.iter().find(|cart| cart.crashed) {
-    println!("Crashed at: ({}, {})", x, y);
+    if world.step() {
+      if first_crash {
+        print!("\x1b[2J{}", world);
+        if let Some(Cart { x, y, .. }) = world.carts.iter().find(|cart| cart.crashed) {
+          println!("First crash at: ({}, {})", x, y);
+        }
+        first_crash = false;
+
+        print!("Press enter to continue (type 'skip' to not animate the rest): ");
+        std::io::stdout().flush().unwrap();
+        let mut input_line = String::new();
+        std::io::stdin().read_line(&mut input_line).unwrap();
+
+        if input_line.trim() == "skip" {
+          skipping = true;
+        }
+      }
+
+      let not_crashed: Vec<&Cart> = world.carts.iter().filter(|cart| !cart.crashed).collect();
+      if not_crashed.len() == 1 {
+        print!("\x1b[2J{}", world);
+        let Cart { x, y, .. } = not_crashed[0];
+        println!("Last remaining cart at: ({}, {})", x, y);
+        break;
+      }
+    }
   }
 }
 

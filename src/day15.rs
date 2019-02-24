@@ -422,9 +422,15 @@ pub fn solve(input_file: File) {
   let mut map = String::new();
   reader.read_to_string(&mut map).unwrap();
 
-  let world: World = map.trim().parse().unwrap();
+  let mut world: World = map.trim().parse().unwrap();
 
-  println!("{}", world);
+  println!("Initial world:\n\n{}", world);
+
+  let outcome = world.combat();
+
+  println!("\nAfter combat:\n\n{}", world);
+
+  println!("\nOutcome: {}", outcome);
 }
 
 #[cfg(test)]

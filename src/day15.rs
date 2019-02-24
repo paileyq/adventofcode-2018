@@ -10,6 +10,9 @@ use std::io::prelude::*;
 use std::ops::Add;
 use std::str::FromStr;
 
+const DEFAULT_HEALTH: i32 = 200;
+const DEFAULT_ATTACK_POWER: i32 = 3;
+
 #[derive(PartialEq, Debug, Clone, Copy, Eq, Hash)]
 struct Position(usize, usize);
 
@@ -68,20 +71,33 @@ impl Tile {
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-enum UnitType {
+enum Team {
   Elf,
   Goblin,
 }
 
+#[derive(Debug)]
 struct Unit {
-  unit_type: UnitType,
+  team: Team,
   position: Position,
   health: i32,
 }
 
 impl Unit {
-  pub fn new(unit_type: UnitType, position: Position, health: i32) -> Unit {
-    Unit { unit_type, position, health }
+  pub fn new(team: Team, position: Position) -> Unit {
+    Unit { team, position, health: DEFAULT_HEALTH }
+  }
+
+  pub fn team(&self) -> Team {
+    self.team
+  }
+
+  pub fn position(&self) -> Position {
+    self.position
+  }
+
+  pub fn health(&self) -> i32 {
+    self.health
   }
 }
 
@@ -156,22 +172,35 @@ impl FromStr for World {
 
   fn from_str(s: &str) -> Result<World, Self::Err> {
     let width = s.lines().next().unwrap().len();
-    let mut height = 1;
     let mut tiles = Vec::new();
+    let mut units = Vec::new();
 
+    let mut x = 0;
+    let mut y = 0;
     for c in s.chars() {
       if let Some(tile) = Tile::from_char(c) {
         tiles.push(tile);
+
+        match tile {
+          Tile::Elf    => units.push(Unit::new(Team::Elf, Position(x, y))),
+          Tile::Goblin => units.push(Unit::new(Team::Goblin, Position(x, y))),
+          _ => (),
+        };
+
+        x += 1;
       } else if c == '\n' {
-        height += 1;
+        y += 1;
+        x = 0;
       }
     }
+
+    let height = y + 1;
 
     if tiles.len() != width * height {
       return Err("invalid world map string");
     }
 
-    Ok(World { tiles, width, height, units: vec![] })
+    Ok(World { tiles, width, height, units })
   }
 }
 
@@ -184,6 +213,19 @@ impl Display for World {
         .collect::<String>();
 
       write!(f, "{}", row)?;
+
+      let mut units = self.units.iter()
+        .filter(|unit| unit.position().y() == y)
+        .collect::<Vec<_>>();
+
+      units.sort_by_key(|unit| unit.position().x());
+
+      for (index, unit) in units.iter().enumerate() {
+        write!(f, "{}{}({})",
+          if index == 0 { "   " } else { ", " },
+          match unit.team() { Team::Elf => "E", Team::Goblin => "G" },
+          unit.health())?;
+      }
 
       if y != self.height - 1 {
         write!(f, "\n")?;
@@ -229,7 +271,15 @@ mod tests {
     assert_eq!(world.tile(Position(7, 3)), None);
     assert_eq!(world.tile(Position(0, 5)), None);
 
-    assert_eq!(map.trim(), format!("{}", world));
+    let expected = "
+#######
+#E..G.#   E(200), G(200)
+#...#.#
+#.G.#G#   G(200), G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
   }
 
   #[test]

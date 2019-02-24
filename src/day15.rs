@@ -13,6 +13,8 @@ use std::str::FromStr;
 const DEFAULT_HEALTH: i32 = 200;
 const DEFAULT_ATTACK_POWER: i32 = 3;
 
+const DIRECTIONS: [(isize, isize); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
 #[derive(PartialEq, Debug, Clone, Copy, Eq, Hash)]
 struct Position(usize, usize);
 
@@ -76,6 +78,24 @@ enum Team {
   Goblin,
 }
 
+impl Team {
+  pub fn enemy(self) -> Team {
+    use self::Team::*;
+
+    match self {
+      Elf => Goblin,
+      Goblin => Elf,
+    }
+  }
+
+  pub fn tile(self) -> Tile {
+    match self {
+      Team::Elf => Tile::Elf,
+      Team::Goblin => Tile::Goblin,
+    }
+  }
+}
+
 #[derive(Debug)]
 struct Unit {
   team: Team,
@@ -94,6 +114,10 @@ impl Unit {
 
   pub fn position(&self) -> Position {
     self.position
+  }
+
+  pub fn set_position(&mut self, position: Position) {
+    self.position = position;
   }
 
   pub fn health(&self) -> i32 {
@@ -117,6 +141,66 @@ impl World {
     Some(self.tiles[position.y() * self.width + position.x()])
   }
 
+  pub fn set_tile(&mut self, position: Position, tile: Tile) -> Option<()> {
+    if position.x() >= self.width || position.y() >= self.height {
+      return None;
+    }
+
+    self.tiles[position.y() * self.width + position.x()] = tile;
+
+    Some(())
+  }
+
+  pub fn move_step(&mut self, unit_index: usize) -> Option<()> {
+    let position = self.units[unit_index].position();
+    let team = self.units[unit_index].team();
+    let enemy_team = team.enemy();
+
+    for &direction in &DIRECTIONS {
+      if self.tile(position + direction) == Some(enemy_team.tile()) {
+        return None;
+      }
+    }
+
+    let destination = self.distances_from(position)
+      .into_iter()
+      .filter(|&(position, _)| {
+        for &direction in &DIRECTIONS {
+          if self.tile(position + direction) == Some(enemy_team.tile()) {
+            return true;
+          }
+        }
+        false
+      })
+      .min_by_key(|&(position, distance)|
+        (distance, position.y(), position.x())
+      )?
+      .0;
+
+    let distances_from_destination = self.distances_from(destination);
+
+    let new_position = DIRECTIONS.iter()
+      .map(|&direction| position + direction)
+      .filter(|&new_position| self.tile(new_position) == Some(Tile::Empty))
+      .min_by_key(|new_position| (
+        distances_from_destination.get(new_position).unwrap_or(&std::usize::MAX),
+        new_position.y(),
+        new_position.x()
+      ))
+      .unwrap();
+
+    if !distances_from_destination.contains_key(&new_position) {
+      return None;
+    }
+
+    self.set_tile(position, Tile::Empty);
+    self.set_tile(new_position, team.tile());
+
+    self.units[unit_index].set_position(new_position);
+
+    Some(())
+  }
+
   pub fn distances_from(&self, source: Position) -> HashMap<Position, usize> {
     let mut distances = HashMap::new();
     let mut unvisited = HashSet::new();
@@ -136,7 +220,7 @@ impl World {
     loop {
       let next_distance = distances[&current] + 1;
 
-      for &direction in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
+      for &direction in &DIRECTIONS {
         let neighbor = current + direction;
 
         if self.tile(neighbor) == Some(Tile::Empty) {
@@ -337,6 +421,56 @@ mod tests {
     assert_eq!(3, distances[&Position(3, 2)]);
     assert_eq!(2, distances[&Position(1, 3)]);
     assert_eq!(4, distances[&Position(3, 3)]);
+  }
+
+  #[test]
+  fn test_world_move() {
+    let map = "
+#######
+#.E...#
+#.....#
+#...G.#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.move_step(0);
+
+    let expected = "
+#######
+#..E..#   E(200)
+#.....#
+#...G.#   G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_world_move_with_unreachable_tiles() {
+    let map = "
+#######
+#E..G.#
+#...#.#
+#.G.#G#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.move_step(0);
+
+    let expected = "
+#######
+#.E.G.#   E(200), G(200)
+#...#.#
+#.G.#G#   G(200), G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
   }
 }
 

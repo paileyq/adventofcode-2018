@@ -11,7 +11,7 @@ use std::ops::Add;
 use std::str::FromStr;
 
 const DEFAULT_HEALTH: i32 = 200;
-const DEFAULT_ATTACK_POWER: i32 = 3;
+const DEFAULT_ATTACK: i32 = 3;
 
 const DIRECTIONS: [(isize, isize); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
 
@@ -101,11 +101,12 @@ struct Unit {
   team: Team,
   position: Position,
   health: i32,
+  attack: i32,
 }
 
 impl Unit {
   pub fn new(team: Team, position: Position) -> Unit {
-    Unit { team, position, health: DEFAULT_HEALTH }
+    Unit { team, position, health: DEFAULT_HEALTH, attack: DEFAULT_ATTACK }
   }
 
   pub fn team(&self) -> Team {
@@ -130,6 +131,14 @@ impl Unit {
 
   pub fn take_damage(&mut self, damage: i32) {
     self.health -= damage;
+  }
+
+  pub fn attack_power(&self) -> i32 {
+    self.attack
+  }
+
+  pub fn set_attack_power(&mut self, attack_power: i32) {
+    self.attack = attack_power;
   }
 }
 
@@ -158,6 +167,20 @@ impl World {
     self.tiles[position.y() * self.width + position.x()] = tile;
 
     Some(())
+  }
+
+  pub fn set_elf_attack_power(&mut self, attack_power: i32) {
+    for unit in self.units.iter_mut() {
+      if unit.team() == Team::Elf {
+        unit.set_attack_power(attack_power);
+      }
+    }
+  }
+
+  pub fn num_dead(&self, team: Team) -> usize {
+    self.units.iter()
+      .filter(|unit| !unit.is_alive() && unit.team() == team)
+      .count()
   }
 
   pub fn combat(&mut self) -> i32 {
@@ -265,6 +288,7 @@ impl World {
     assert!(self.units[unit_index].is_alive());
 
     let position = self.units[unit_index].position();
+    let attack_power = self.units[unit_index].attack_power();
     let team = self.units[unit_index].team();
     let enemy_team = team.enemy();
 
@@ -280,7 +304,7 @@ impl World {
       })?;
 
     let enemy = &mut self.units[target_index];
-    enemy.take_damage(DEFAULT_ATTACK_POWER);
+    enemy.take_damage(attack_power);
 
     if !enemy.is_alive() {
       let enemy_position = enemy.position();
@@ -416,21 +440,71 @@ impl Display for World {
   }
 }
 
+fn find_minimum_elf_attack_power(map: &str) -> (i32, i32) {
+  for attack_power in 3.. {
+    let mut world: World = map.trim().parse().unwrap();
+    world.set_elf_attack_power(attack_power);
+
+    let outcome = world.combat();
+
+    if world.num_dead(Team::Elf) == 0 {
+      return (attack_power, outcome);
+    }
+  }
+
+  unreachable!()
+}
+
 pub fn solve(input_file: File) {
   let mut reader = BufReader::new(input_file);
 
   let mut map = String::new();
   reader.read_to_string(&mut map).unwrap();
 
-  let mut world: World = map.trim().parse().unwrap();
+  println!("What do you want to do?");
+  println!("  (1) Solve part 1");
+  println!("  (2) Solve part 2");
+  println!("  (3) Visualize round-by-round");
+  println!("  (4) Visualize turn-by-turn");
+  println!("  (5) Visualize step-by-step");
+  println!("");
+  print!("[1-5]? ");
+  std::io::stdout().flush().unwrap();
 
-  println!("Initial world:\n\n{}", world);
+  let choice = stdin_read_line().parse::<u32>().expect("integer input expected");
 
-  let outcome = world.combat();
+  match choice {
+    1 => {
+      let mut world: World = map.trim().parse().unwrap();
 
-  println!("\nAfter combat:\n\n{}", world);
+      println!("\nInitial world:\n\n{}", world);
 
-  println!("\nOutcome: {}", outcome);
+      let outcome = world.combat();
+
+      println!("\nAfter combat:\n\n{}", world);
+
+      println!("\nOutcome: {}", outcome);
+      println!("Dead elves: {}", world.num_dead(Team::Elf));
+      println!("Dead goblins: {}", world.num_dead(Team::Goblin));
+    },
+    2 => {
+      println!("\nFinding minimum attack power needed for no elves to die...");
+
+      let (attack_power, outcome) = find_minimum_elf_attack_power(&map);
+
+      println!("Attack power: {}", attack_power);
+      println!("Outcome: {}", outcome);
+    },
+    _ => {
+      println!("That wasn't one of the choices!");
+    },
+  }
+}
+
+fn stdin_read_line() -> String {
+  let mut input = String::new();
+  std::io::stdin().read_line(&mut input).unwrap();
+  input.trim().to_string()
 }
 
 #[cfg(test)]
@@ -1071,6 +1145,98 @@ mod tests {
 
     assert_eq!(expected.trim(), format!("{}", world));
     assert_eq!(18740, outcome);
+  }
+
+  #[test]
+  fn test_find_attack_power1() {
+    let map = "
+#######
+#.G...#
+#...EG#
+#.#.#G#
+#..G#E#
+#.....#
+#######
+";
+
+    let (attack_power, outcome) = find_minimum_elf_attack_power(map);
+
+    assert_eq!(15, attack_power);
+    assert_eq!(4988, outcome);
+  }
+
+  #[test]
+  fn test_find_attack_power2() {
+    let map = "
+#######
+#E..EG#
+#.#G.E#
+#E.##E#
+#G..#.#
+#..E#.#
+#######
+";
+
+    let (attack_power, outcome) = find_minimum_elf_attack_power(map);
+
+    assert_eq!(4, attack_power);
+    assert_eq!(31284, outcome);
+  }
+
+  #[test]
+  fn test_find_attack_power3() {
+    let map = "
+#######
+#E.G#.#
+#.#G..#
+#G.#.G#
+#G..#.#
+#...E.#
+#######
+";
+
+    let (attack_power, outcome) = find_minimum_elf_attack_power(map);
+
+    assert_eq!(15, attack_power);
+    assert_eq!(3478, outcome);
+  }
+
+  #[test]
+  fn test_find_attack_power4() {
+    let map = "
+#######
+#.E...#
+#.#..G#
+#.###.#
+#E#G#G#
+#...#G#
+#######
+";
+
+    let (attack_power, outcome) = find_minimum_elf_attack_power(map);
+
+    assert_eq!(12, attack_power);
+    assert_eq!(6474, outcome);
+  }
+
+  #[test]
+  fn test_find_attack_power5() {
+    let map = "
+#########
+#G......#
+#.E.#...#
+#..##..G#
+#...##..#
+#...#...#
+#.G...G.#
+#.....G.#
+#########
+";
+
+    let (attack_power, outcome) = find_minimum_elf_attack_power(map);
+
+    assert_eq!(34, attack_power);
+    assert_eq!(1140, outcome);
   }
 }
 

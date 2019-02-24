@@ -159,6 +159,13 @@ impl World {
     Some(())
   }
 
+  pub fn turn(&mut self, unit_index: usize) {
+    assert!(self.units[unit_index].is_alive());
+
+    self.move_step(unit_index);
+    self.attack_step(unit_index);
+  }
+
   pub fn move_step(&mut self, unit_index: usize) -> Option<()> {
     assert!(self.units[unit_index].is_alive());
 
@@ -606,6 +613,106 @@ mod tests {
 #...G.#   G(200)
 #######
 ";
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_turn_do_nothing() {
+    let map = "
+#######
+#.E..E#
+#...#.#
+#...#G#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.turn(0);
+
+    let expected = "
+#######
+#.E..E#   E(200), E(200)
+#...#.#
+#...#G#   G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_turn_move_without_attacking() {
+    let map = "
+#######
+#.....#
+#.E..G#
+#.....#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.turn(0);
+
+    let expected = "
+#######
+#.....#
+#..E.G#   E(200), G(200)
+#.....#
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_turn_attack_without_moving() {
+    let map = "
+#######
+#.....#
+#.EG..#
+#.....#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.turn(0);
+
+    let expected = "
+#######
+#.....#
+#.EG..#   E(200), G(197)
+#.....#
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_turn_move_and_attack() {
+    let map = "
+#######
+#.....#
+#.E.G.#
+#.....#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.turn(0);
+
+    let expected = "
+#######
+#.....#
+#..EG.#   E(200), G(197)
+#.....#
+#######
+";
+
     assert_eq!(expected.trim(), format!("{}", world));
   }
 }

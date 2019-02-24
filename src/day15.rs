@@ -142,12 +142,20 @@ impl Unit {
   }
 }
 
+#[derive(PartialEq)]
+enum LogLevel {
+  None,
+  Round,
+  Turn,
+}
+
 struct World {
   tiles: Vec<Tile>,
   width: usize,
   height: usize,
   units: Vec<Unit>,
   rounds_completed: i32,
+  log_level: LogLevel,
 }
 
 impl World {
@@ -177,6 +185,10 @@ impl World {
     }
   }
 
+  pub fn set_log_level(&mut self, log_level: LogLevel) {
+    self.log_level = log_level;
+  }
+
   pub fn num_dead(&self, team: Team) -> usize {
     self.units.iter()
       .filter(|unit| !unit.is_alive() && unit.team() == team)
@@ -184,15 +196,34 @@ impl World {
   }
 
   pub fn combat(&mut self) -> i32 {
+    let delay = std::time::Duration::from_millis(100);
+
+    if self.log_level == LogLevel::Round || self.log_level == LogLevel::Turn {
+      println!("Initial map:\n\n{}\n", self);
+      std::thread::sleep(delay);
+    }
+
     loop {
-      match self.round() {
-        Some(_) => { self.rounds_completed += 1; },
-        None => { return self.rounds_completed * self.total_health(); },
+      if self.round().is_none() {
+        if self.log_level == LogLevel::Round || self.log_level == LogLevel::Turn {
+          println!("Combat end:\n\n{}\n", self);
+        }
+
+        return self.rounds_completed * self.total_health();
+      }
+
+      self.rounds_completed += 1;
+
+      if self.log_level == LogLevel::Round {
+        println!("After {} rounds:\n\n{}\n", self.rounds_completed, self);
+        std::thread::sleep(delay);
       }
     }
   }
 
   pub fn round(&mut self) -> Option<()> {
+    let delay = std::time::Duration::from_millis(50);
+
     let mut units_with_indexes = self.units.iter()
       .enumerate()
       .collect::<Vec<(usize, &Unit)>>();
@@ -209,6 +240,11 @@ impl World {
     for unit_index in unit_indexes {
       if self.units[unit_index].is_alive() {
         self.turn(unit_index)?;
+
+        if self.log_level == LogLevel::Turn {
+          println!("Round {}, unit #{}'s turn:\n\n{}\n", self.rounds_completed + 1, unit_index, self);
+          std::thread::sleep(delay);
+        }
       }
     }
 
@@ -404,7 +440,14 @@ impl FromStr for World {
       return Err("invalid world map string");
     }
 
-    Ok(World { tiles, width, height, units, rounds_completed: 0 })
+    Ok(World {
+      tiles,
+      width,
+      height,
+      units,
+      rounds_completed: 0,
+      log_level: LogLevel::None
+    })
   }
 }
 
@@ -466,12 +509,13 @@ pub fn solve(input_file: File) {
   println!("  (2) Solve part 2");
   println!("  (3) Visualize round-by-round");
   println!("  (4) Visualize turn-by-turn");
-  println!("  (5) Visualize step-by-step");
   println!("");
-  print!("[1-5]? ");
+  print!("[1-4]? ");
   std::io::stdout().flush().unwrap();
 
-  let choice = stdin_read_line().parse::<u32>().expect("integer input expected");
+  let mut choice = String::new();
+  std::io::stdin().read_line(&mut choice).unwrap();
+  let choice = choice.trim().parse::<u32>().expect("integer input expected");
 
   match choice {
     1 => {
@@ -495,16 +539,21 @@ pub fn solve(input_file: File) {
       println!("Attack power: {}", attack_power);
       println!("Outcome: {}", outcome);
     },
+    3 | 4 => {
+      let mut world: World = map.trim().parse().unwrap();
+
+      world.set_log_level(match choice {
+        3 => LogLevel::Round,
+        4 => LogLevel::Turn,
+        _ => unreachable!(),
+      });
+
+      world.combat();
+    },
     _ => {
       println!("That wasn't one of the choices!");
     },
   }
-}
-
-fn stdin_read_line() -> String {
-  let mut input = String::new();
-  std::io::stdin().read_line(&mut input).unwrap();
-  input.trim().to_string()
 }
 
 #[cfg(test)]
@@ -1219,7 +1268,7 @@ mod tests {
     assert_eq!(6474, outcome);
   }
 
-  #[test]
+  #[test] #[ignore] // slow!
   fn test_find_attack_power5() {
     let map = "
 #########

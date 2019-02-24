@@ -7,7 +7,32 @@ use std::fmt::Display;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
+use std::ops::Add;
 use std::str::FromStr;
+
+#[derive(PartialEq, Debug, Clone, Copy, Eq, Hash)]
+struct Position(usize, usize);
+
+impl Position {
+  pub fn x(self) -> usize {
+    return self.0;
+  }
+
+  pub fn y(self) -> usize {
+    return self.1;
+  }
+}
+
+impl Add<(isize, isize)> for Position {
+  type Output = Position;
+
+  fn add(self, (dx, dy): (isize, isize)) -> Position {
+    Position(
+      (self.x() as isize + dx) as usize,
+      (self.y() as isize + dy) as usize,
+    )
+  }
+}
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 enum Tile {
@@ -42,46 +67,63 @@ impl Tile {
   }
 }
 
+#[derive(PartialEq, Debug, Clone, Copy)]
+enum UnitType {
+  Elf,
+  Goblin,
+}
+
+struct Unit {
+  unit_type: UnitType,
+  position: Position,
+  health: i32,
+}
+
+impl Unit {
+  pub fn new(unit_type: UnitType, position: Position, health: i32) -> Unit {
+    Unit { unit_type, position, health }
+  }
+}
+
 struct World {
   tiles: Vec<Tile>,
   width: usize,
   height: usize,
+  units: Vec<Unit>,
 }
 
 impl World {
-  pub fn tile(&self, x: usize, y: usize) -> Option<Tile> {
-    if x >= self.width || y >= self.height {
+  pub fn tile(&self, position: Position) -> Option<Tile> {
+    if position.x() >= self.width || position.y() >= self.height {
       return None;
     }
 
-    Some(self.tiles[y * self.width + x])
+    Some(self.tiles[position.y() * self.width + position.x()])
   }
 
-  pub fn distances_from(&self, from_x: usize, from_y: usize) -> HashMap<(usize, usize), usize> {
+  pub fn distances_from(&self, source: Position) -> HashMap<Position, usize> {
     let mut distances = HashMap::new();
     let mut unvisited = HashSet::new();
 
     for tile_x in 0..self.width {
       for tile_y in 0..self.height {
-        if self.tile(tile_x, tile_y) == Some(Tile::Empty) {
-          unvisited.insert((tile_x, tile_y));
+        let pos = Position(tile_x, tile_y);
+        if self.tile(pos) == Some(Tile::Empty) {
+          unvisited.insert(pos);
         }
       }
     }
 
-    distances.insert((from_x, from_y), 0);
+    distances.insert(source, 0);
 
-    let mut current = (from_x, from_y);
+    let mut current = source;
     loop {
       let next_distance = distances[&current] + 1;
 
-      for (dx, dy) in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
-        let neighbor = (
-          (current.0 as isize + dx) as usize,
-          (current.1 as isize + dy) as usize,
-        );
+      for &direction in &[(0, 1), (1, 0), (0, -1), (-1, 0)] {
+        let neighbor = current + direction;
 
-        if self.tile(neighbor.0, neighbor.1) == Some(Tile::Empty) {
+        if self.tile(neighbor) == Some(Tile::Empty) {
           let neighbor_distance = distances.entry(neighbor).or_insert(next_distance);
           *neighbor_distance = cmp::min(*neighbor_distance, next_distance);
         }
@@ -129,7 +171,7 @@ impl FromStr for World {
       return Err("invalid world map string");
     }
 
-    Ok(World { tiles, width, height })
+    Ok(World { tiles, width, height, units: vec![] })
   }
 }
 
@@ -179,13 +221,13 @@ mod tests {
 
     let world: World = map.trim().parse().unwrap();
 
-    assert_eq!(world.tile(1, 3), Some(Tile::Empty));
-    assert_eq!(world.tile(0, 0), Some(Tile::Wall));
-    assert_eq!(world.tile(6, 4), Some(Tile::Wall));
-    assert_eq!(world.tile(1, 1), Some(Tile::Elf));
-    assert_eq!(world.tile(5, 3), Some(Tile::Goblin));
-    assert_eq!(world.tile(7, 3), None);
-    assert_eq!(world.tile(0, 5), None);
+    assert_eq!(world.tile(Position(1, 3)), Some(Tile::Empty));
+    assert_eq!(world.tile(Position(0, 0)), Some(Tile::Wall));
+    assert_eq!(world.tile(Position(6, 4)), Some(Tile::Wall));
+    assert_eq!(world.tile(Position(1, 1)), Some(Tile::Elf));
+    assert_eq!(world.tile(Position(5, 3)), Some(Tile::Goblin));
+    assert_eq!(world.tile(Position(7, 3)), None);
+    assert_eq!(world.tile(Position(0, 5)), None);
 
     assert_eq!(map.trim(), format!("{}", world));
   }
@@ -202,23 +244,23 @@ mod tests {
 
     let world: World = map.trim().parse().unwrap();
 
-    let distances: HashMap<(usize, usize), usize> = world.distances_from(4, 2);
+    let distances = world.distances_from(Position(4, 2));
 
     assert_eq!(13, distances.len());
 
-    assert_eq!(4, distances[&(1, 1)]);
-    assert_eq!(2, distances[&(3, 1)]);
-    assert_eq!(1, distances[&(4, 1)]);
-    assert_eq!(2, distances[&(5, 1)]);
-    assert_eq!(3, distances[&(1, 2)]);
-    assert_eq!(2, distances[&(2, 2)]);
-    assert_eq!(1, distances[&(3, 2)]);
-    assert_eq!(0, distances[&(4, 2)]);
-    assert_eq!(1, distances[&(5, 2)]);
-    assert_eq!(4, distances[&(1, 3)]);
-    assert_eq!(3, distances[&(2, 3)]);
-    assert_eq!(2, distances[&(3, 3)]);
-    assert_eq!(2, distances[&(5, 3)]);
+    assert_eq!(4, distances[&Position(1, 1)]);
+    assert_eq!(2, distances[&Position(3, 1)]);
+    assert_eq!(1, distances[&Position(4, 1)]);
+    assert_eq!(2, distances[&Position(5, 1)]);
+    assert_eq!(3, distances[&Position(1, 2)]);
+    assert_eq!(2, distances[&Position(2, 2)]);
+    assert_eq!(1, distances[&Position(3, 2)]);
+    assert_eq!(0, distances[&Position(4, 2)]);
+    assert_eq!(1, distances[&Position(5, 2)]);
+    assert_eq!(4, distances[&Position(1, 3)]);
+    assert_eq!(3, distances[&Position(2, 3)]);
+    assert_eq!(2, distances[&Position(3, 3)]);
+    assert_eq!(2, distances[&Position(5, 3)]);
   }
 
   #[test]
@@ -233,18 +275,18 @@ mod tests {
 
     let world: World = map.trim().parse().unwrap();
 
-    let distances: HashMap<(usize, usize), usize> = world.distances_from(1, 1);
+    let distances = world.distances_from(Position(1, 1));
 
     assert_eq!(8, distances.len());
 
-    assert_eq!(0, distances[&(1, 1)]);
-    assert_eq!(1, distances[&(2, 1)]);
-    assert_eq!(2, distances[&(3, 1)]);
-    assert_eq!(1, distances[&(1, 2)]);
-    assert_eq!(2, distances[&(2, 2)]);
-    assert_eq!(3, distances[&(3, 2)]);
-    assert_eq!(2, distances[&(1, 3)]);
-    assert_eq!(4, distances[&(3, 3)]);
+    assert_eq!(0, distances[&Position(1, 1)]);
+    assert_eq!(1, distances[&Position(2, 1)]);
+    assert_eq!(2, distances[&Position(3, 1)]);
+    assert_eq!(1, distances[&Position(1, 2)]);
+    assert_eq!(2, distances[&Position(2, 2)]);
+    assert_eq!(3, distances[&Position(3, 2)]);
+    assert_eq!(2, distances[&Position(1, 3)]);
+    assert_eq!(4, distances[&Position(3, 3)]);
   }
 }
 

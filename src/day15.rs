@@ -159,6 +159,27 @@ impl World {
     Some(())
   }
 
+  pub fn round(&mut self) {
+    let mut units_with_indexes = self.units.iter()
+      .enumerate()
+      .collect::<Vec<(usize, &Unit)>>();
+
+    units_with_indexes.sort_by_key(|(_, unit)| (
+      unit.position.y(),
+      unit.position.x(),
+    ));
+
+    let unit_indexes = units_with_indexes.into_iter()
+      .map(|(i, _)| i)
+      .collect::<Vec<usize>>();
+
+    for unit_index in unit_indexes {
+      if self.units[unit_index].is_alive() {
+        self.turn(unit_index);
+      }
+    }
+  }
+
   pub fn turn(&mut self, unit_index: usize) {
     assert!(self.units[unit_index].is_alive());
 
@@ -713,6 +734,153 @@ mod tests {
 #######
 ";
 
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_round() {
+    let map = "
+#######
+#.G...#
+#...EG#
+#.#.#G#
+#..G#E#
+#.....#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let expected = "
+#######
+#.G...#   G(200)
+#...EG#   E(200), G(200)
+#.#.#G#   G(200)
+#..G#E#   G(200), E(200)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#..G..#   G(200)
+#...EG#   E(197), G(197)
+#.#G#G#   G(200), G(197)
+#...#E#   E(197)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#...G.#   G(200)
+#..GEG#   G(200), E(188), G(194)
+#.#.#G#   G(194)
+#...#E#   E(194)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    for _ in 0..21 {
+      world.round();
+    }
+
+    let expected = "
+#######
+#...G.#   G(200)
+#..G.G#   G(200), G(131)
+#.#.#G#   G(131)
+#...#E#   E(131)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#..G..#   G(200)
+#...G.#   G(131)
+#.#G#G#   G(200), G(128)
+#...#E#   E(128)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#.G...#   G(200)
+#..G..#   G(131)
+#.#.#G#   G(125)
+#..G#E#   G(200), E(125)
+#.....#
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#G....#   G(200)
+#.G...#   G(131)
+#.#.#G#   G(122)
+#...#E#   E(122)
+#..G..#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#G....#   G(200)
+#.G...#   G(131)
+#.#.#G#   G(119)
+#...#E#   E(119)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.round();
+
+    let expected = "
+#######
+#G....#   G(200)
+#.G...#   G(131)
+#.#.#G#   G(116)
+#...#E#   E(113)
+#....G#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    for _ in 0..19 {
+      world.round();
+    }
+
+    let expected = "
+#######
+#G....#   G(200)
+#.G...#   G(131)
+#.#.#G#   G(59)
+#...#.#
+#....G#   G(200)
+#######
+";
     assert_eq!(expected.trim(), format!("{}", world));
   }
 }

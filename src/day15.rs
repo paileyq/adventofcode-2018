@@ -123,6 +123,14 @@ impl Unit {
   pub fn health(&self) -> i32 {
     self.health
   }
+
+  pub fn is_alive(&self) -> bool {
+    self.health > 0
+  }
+
+  pub fn take_damage(&mut self, damage: i32) {
+    self.health -= damage;
+  }
 }
 
 struct World {
@@ -152,6 +160,8 @@ impl World {
   }
 
   pub fn move_step(&mut self, unit_index: usize) -> Option<()> {
+    assert!(self.units[unit_index].is_alive());
+
     let position = self.units[unit_index].position();
     let team = self.units[unit_index].team();
     let enemy_team = team.enemy();
@@ -197,6 +207,35 @@ impl World {
     self.set_tile(new_position, team.tile());
 
     self.units[unit_index].set_position(new_position);
+
+    Some(())
+  }
+
+  pub fn attack_step(&mut self, unit_index: usize) -> Option<()> {
+    assert!(self.units[unit_index].is_alive());
+
+    let position = self.units[unit_index].position();
+    let team = self.units[unit_index].team();
+    let enemy_team = team.enemy();
+
+    let target_index = DIRECTIONS.iter()
+      .filter_map(|&direction| self.units.iter().position(|unit| {
+        unit.is_alive() &&
+        unit.team() == enemy_team &&
+        unit.position() == position + direction
+      }))
+      .min_by_key(|&enemy_index| {
+        let enemy = &self.units[enemy_index];
+        (enemy.health(), enemy.position.y(), enemy.position.x())
+      })?;
+
+    let enemy = &mut self.units[target_index];
+    enemy.take_damage(DEFAULT_ATTACK_POWER);
+
+    if !enemy.is_alive() {
+      let enemy_position = enemy.position();
+      self.set_tile(enemy_position, Tile::Empty);
+    }
 
     Some(())
   }
@@ -299,7 +338,7 @@ impl Display for World {
       write!(f, "{}", row)?;
 
       let mut units = self.units.iter()
-        .filter(|unit| unit.position().y() == y)
+        .filter(|unit| unit.position().y() == y && unit.is_alive())
         .collect::<Vec<_>>();
 
       units.sort_by_key(|unit| unit.position().x());
@@ -367,7 +406,7 @@ mod tests {
   }
 
   #[test]
-  fn test_world_distances_from() {
+  fn test_distances_from() {
     let map = "
 #######
 #.E...#
@@ -398,7 +437,7 @@ mod tests {
   }
 
   #[test]
-  fn test_world_distances_from_with_unreachable_tiles() {
+  fn test_distances_from_with_unreachable_tiles() {
     let map = "
 #######
 #E..G.#
@@ -424,7 +463,7 @@ mod tests {
   }
 
   #[test]
-  fn test_world_move() {
+  fn test_move_step() {
     let map = "
 #######
 #.E...#
@@ -449,7 +488,7 @@ mod tests {
   }
 
   #[test]
-  fn test_world_move_with_unreachable_tiles() {
+  fn test_move_step_with_unreachable_tiles() {
     let map = "
 #######
 #E..G.#
@@ -470,6 +509,103 @@ mod tests {
 #######
 ";
 
+    assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_attack_step() {
+    let map = "
+#######
+#G....#
+#..G..#
+#..EGE#
+#..G..#
+#...G.#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    world.attack_step(2);
+
+    let expected = "
+#######
+#G....#   G(200)
+#..G..#   G(197)
+#..EGE#   E(200), G(200), E(200)
+#..G..#   G(200)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.attack_step(4);
+
+    let expected = "
+#######
+#G....#   G(200)
+#..G..#   G(197)
+#..EGE#   E(200), G(197), E(200)
+#..G..#   G(200)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    for _ in 0..66 {
+      world.attack_step(2);
+    }
+
+    let expected = "
+#######
+#G....#   G(200)
+#.....#
+#..EGE#   E(200), G(197), E(200)
+#..G..#   G(200)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    for _ in 0..100 {
+      world.attack_step(4);
+    }
+
+    let expected = "
+#######
+#G....#   G(200)
+#.....#
+#..E.E#   E(200), E(200)
+#..G..#   G(200)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.attack_step(2);
+
+    let expected = "
+#######
+#G....#   G(200)
+#.....#
+#..E.E#   E(200), E(200)
+#..G..#   G(197)
+#...G.#   G(200)
+#######
+";
+    assert_eq!(expected.trim(), format!("{}", world));
+
+    world.attack_step(5);
+
+    let expected = "
+#######
+#G....#   G(200)
+#.....#
+#..E.E#   E(197), E(200)
+#..G..#   G(197)
+#...G.#   G(200)
+#######
+";
     assert_eq!(expected.trim(), format!("{}", world));
   }
 }

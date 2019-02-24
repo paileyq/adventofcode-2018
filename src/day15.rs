@@ -138,6 +138,7 @@ struct World {
   width: usize,
   height: usize,
   units: Vec<Unit>,
+  rounds_completed: i32,
 }
 
 impl World {
@@ -159,7 +160,16 @@ impl World {
     Some(())
   }
 
-  pub fn round(&mut self) {
+  pub fn combat(&mut self) -> i32 {
+    loop {
+      match self.round() {
+        Some(_) => { self.rounds_completed += 1; },
+        None => { return self.rounds_completed * self.total_health(); },
+      }
+    }
+  }
+
+  pub fn round(&mut self) -> Option<()> {
     let mut units_with_indexes = self.units.iter()
       .enumerate()
       .collect::<Vec<(usize, &Unit)>>();
@@ -175,16 +185,28 @@ impl World {
 
     for unit_index in unit_indexes {
       if self.units[unit_index].is_alive() {
-        self.turn(unit_index);
+        self.turn(unit_index)?;
       }
     }
+
+    Some(())
   }
 
-  pub fn turn(&mut self, unit_index: usize) {
+  pub fn turn(&mut self, unit_index: usize) -> Option<()> {
     assert!(self.units[unit_index].is_alive());
+
+    let enemy_team = self.units[unit_index].team().enemy();
+    let any_enemies_alive = self.units.iter()
+      .any(|unit| unit.is_alive() && unit.team() == enemy_team);
+
+    if !any_enemies_alive {
+      return None;
+    }
 
     self.move_step(unit_index);
     self.attack_step(unit_index);
+
+    Some(())
   }
 
   pub fn move_step(&mut self, unit_index: usize) -> Option<()> {
@@ -316,6 +338,13 @@ impl World {
 
     distances
   }
+
+  fn total_health(&self) -> i32 {
+    self.units.iter()
+      .filter(|unit| unit.is_alive())
+      .map(|unit| unit.health())
+      .sum()
+  }
 }
 
 impl FromStr for World {
@@ -351,7 +380,7 @@ impl FromStr for World {
       return Err("invalid world map string");
     }
 
-    Ok(World { tiles, width, height, units })
+    Ok(World { tiles, width, height, units, rounds_completed: 0 })
   }
 }
 
@@ -882,6 +911,160 @@ mod tests {
 #######
 ";
     assert_eq!(expected.trim(), format!("{}", world));
+  }
+
+  #[test]
+  fn test_combat1() {
+    let map = "
+#######
+#G..#E#
+#E#E.E#
+#G.##.#
+#...#E#
+#...E.#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let outcome = world.combat();
+
+    let expected = "
+#######
+#...#E#   E(200)
+#E#...#   E(197)
+#.E##.#   E(185)
+#E..#E#   E(200), E(200)
+#.....#
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+    assert_eq!(36334, outcome);
+  }
+
+  #[test]
+  fn test_combat2() {
+    let map = "
+#######
+#E..EG#
+#.#G.E#
+#E.##E#
+#G..#.#
+#..E#.#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let outcome = world.combat();
+
+    let expected = "
+#######
+#.E.E.#   E(164), E(197)
+#.#E..#   E(200)
+#E.##.#   E(98)
+#.E.#.#   E(200)
+#...#.#
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+    assert_eq!(39514, outcome);
+  }
+
+  #[test]
+  fn test_combat3() {
+    let map = "
+#######
+#E.G#.#
+#.#G..#
+#G.#.G#
+#G..#.#
+#...E.#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let outcome = world.combat();
+
+    let expected = "
+#######
+#G.G#.#   G(200), G(98)
+#.#G..#   G(200)
+#..#..#
+#...#G#   G(95)
+#...G.#   G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+    assert_eq!(27755, outcome);
+  }
+
+  #[test]
+  fn test_combat4() {
+    let map = "
+#######
+#.E...#
+#.#..G#
+#.###.#
+#E#G#G#
+#...#G#
+#######
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let outcome = world.combat();
+
+    let expected = "
+#######
+#.....#
+#.#G..#   G(200)
+#.###.#
+#.#.#.#
+#G.G#G#   G(98), G(38), G(200)
+#######
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+    assert_eq!(28944, outcome);
+  }
+
+  #[test]
+  fn test_combat5() {
+    let map = "
+#########
+#G......#
+#.E.#...#
+#..##..G#
+#...##..#
+#...#...#
+#.G...G.#
+#.....G.#
+#########
+";
+
+    let mut world: World = map.trim().parse().unwrap();
+
+    let outcome = world.combat();
+
+    let expected = "
+#########
+#.G.....#   G(137)
+#G.G#...#   G(200), G(200)
+#.G##...#   G(200)
+#...##..#
+#.G.#...#   G(200)
+#.......#
+#.......#
+#########
+";
+
+    assert_eq!(expected.trim(), format!("{}", world));
+    assert_eq!(18740, outcome);
   }
 }
 

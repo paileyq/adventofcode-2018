@@ -1,10 +1,39 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::error::Error;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::str::FromStr;
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Eq)]
+enum Op {
+  Addr,
+  Addi,
+  Mulr,
+  Muli,
+  Banr,
+  Bani,
+  Borr,
+  Bori,
+  Setr,
+  Seti,
+  Gtir,
+  Gtri,
+  Gtrr,
+  Eqir,
+  Eqri,
+  Eqrr,
+}
+
+use self::Op::*;
+
+const OPS: [Op; 16] = [
+  Addr, Addi, Mulr, Muli, Banr, Bani, Borr, Bori,
+  Setr, Seti, Gtir, Gtri, Gtrr, Eqir, Eqri, Eqrr,
+];
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 struct State(i32, i32, i32, i32);
@@ -32,6 +61,27 @@ impl State {
     }
 
     state
+  }
+
+  pub fn exec(self, op: Op, a: i32, b: i32, c: i32) -> State {
+    match op {
+      Addr => self.addr(a, b, c),
+      Addi => self.addi(a, b, c),
+      Mulr => self.mulr(a, b, c),
+      Muli => self.muli(a, b, c),
+      Banr => self.banr(a, b, c),
+      Bani => self.bani(a, b, c),
+      Borr => self.borr(a, b, c),
+      Bori => self.bori(a, b, c),
+      Setr => self.setr(a, b, c),
+      Seti => self.seti(a, b, c),
+      Gtir => self.gtir(a, b, c),
+      Gtri => self.gtri(a, b, c),
+      Gtrr => self.gtrr(a, b, c),
+      Eqir => self.eqir(a, b, c),
+      Eqri => self.eqri(a, b, c),
+      Eqrr => self.eqrr(a, b, c),
+    }
   }
 
   pub fn addr(self, reg_a: i32, reg_b: i32, reg_out: i32) -> State {
@@ -143,28 +193,29 @@ struct Instruction {
 }
 
 impl Instruction {
-  pub fn possible_opcodes(self, before: State, after: State) -> i32 {
+  pub fn opcode(self) -> i32 {
+    self.opcode
+  }
+
+  pub fn a(self) -> i32 {
+    self.a
+  }
+
+  pub fn b(self) -> i32 {
+    self.b
+  }
+
+  pub fn c(self) -> i32 {
+    self.c
+  }
+
+  pub fn possible_ops(self, before: State, after: State) -> Vec<Op> {
     let Instruction { a, b, c, .. } = self;
-    let mut count = 0;
 
-    if before.addr(a, b, c) == after { count += 1; }
-    if before.addi(a, b, c) == after { count += 1; }
-    if before.mulr(a, b, c) == after { count += 1; }
-    if before.muli(a, b, c) == after { count += 1; }
-    if before.banr(a, b, c) == after { count += 1; }
-    if before.bani(a, b, c) == after { count += 1; }
-    if before.borr(a, b, c) == after { count += 1; }
-    if before.bori(a, b, c) == after { count += 1; }
-    if before.setr(a, b, c) == after { count += 1; }
-    if before.seti(a, b, c) == after { count += 1; }
-    if before.gtir(a, b, c) == after { count += 1; }
-    if before.gtri(a, b, c) == after { count += 1; }
-    if before.gtrr(a, b, c) == after { count += 1; }
-    if before.eqir(a, b, c) == after { count += 1; }
-    if before.eqri(a, b, c) == after { count += 1; }
-    if before.eqrr(a, b, c) == after { count += 1; }
-
-    count
+    OPS.iter()
+      .filter(|&&op| before.exec(op, a, b, c) == after)
+      .cloned()
+      .collect()
   }
 }
 
@@ -194,14 +245,43 @@ pub fn solve(input_file: File) {
   let mut lines = reader.lines();
 
   let mut num_samples_behaving_like_three_or_more_opcodes = 0;
+
+  let mut ops_set: HashSet<Op> = HashSet::with_capacity(16);
+  for &op in &OPS {
+    ops_set.insert(op);
+  }
+
+  let mut possible_ops_for_opcode: HashMap<i32, HashSet<Op>> = HashMap::new();
+  for opcode in 0..=15 {
+    possible_ops_for_opcode.insert(opcode, ops_set.clone());
+  }
+
+  let mut last_was_empty = false;
   loop {
     if let Some(Ok(line)) = lines.next() {
-      if line.is_empty() { continue }
+      if line.is_empty() {
+        if last_was_empty {
+          break;
+        }
+        last_was_empty = true;
+        continue;
+      } else {
+        last_was_empty = false;
+      }
+
       if let Ok(before_state) = line.parse::<State>() {
         let instruction = lines.next().unwrap().unwrap().parse::<Instruction>().unwrap();
         let after_state = lines.next().unwrap().unwrap().parse::<State>().unwrap();
 
-        if instruction.possible_opcodes(before_state, after_state) >= 3 {
+        let possible_ops = instruction.possible_ops(before_state, after_state);
+
+        for &op in &OPS {
+          if possible_ops.iter().find(|&&possible_op| possible_op == op).is_none() {
+            possible_ops_for_opcode.get_mut(&instruction.opcode()).unwrap().remove(&op);
+          }
+        }
+
+        if possible_ops.len() >= 3 {
           num_samples_behaving_like_three_or_more_opcodes += 1;
         }
       } else {
@@ -212,7 +292,33 @@ pub fn solve(input_file: File) {
     }
   }
 
+  let mut op_for_opcode: HashMap<i32, Op> = HashMap::with_capacity(16);
+  while op_for_opcode.len() < 16 {
+    for opcode in 0..=15 {
+      if possible_ops_for_opcode[&opcode].len() == 1 {
+        let &op = possible_ops_for_opcode[&opcode].iter().next().unwrap();
+        for opcode2 in 0..=15 {
+          if opcode != opcode2 {
+            possible_ops_for_opcode.get_mut(&opcode2).unwrap().remove(&op);
+          }
+        }
+        op_for_opcode.insert(opcode, op);
+      }
+    }
+  }
+
+  let mut state = State(0, 0, 0, 0);
+  while let Some(Ok(line)) = lines.next() {
+    if line.is_empty() { continue }
+
+    if let Ok(instruction) = line.parse::<Instruction>() {
+      let op = op_for_opcode[&instruction.opcode()];
+      state = state.exec(op, instruction.a(), instruction.b(), instruction.c());
+    }
+  }
+
   println!("Number of samples behaving like 3 or more opcodes: {}", num_samples_behaving_like_three_or_more_opcodes);
+  println!("Final state after running the program: {:?}", state);
 }
 
 #[cfg(test)]
@@ -385,6 +491,13 @@ mod tests {
   }
 
   #[test]
+  fn test_exec() {
+    let state = State(2, 3, 6, 7);
+
+    assert_eq!(state.exec(Op::Addi, 2, 4, 3), State(2, 3, 6, 10));
+  }
+
+  #[test]
   fn test_state_parse() {
     assert_eq!(
       "Before: [2, 3, 6, 78]".parse::<State>().unwrap(),
@@ -405,12 +518,17 @@ mod tests {
   }
 
   #[test]
-  fn test_possible_opcodes() {
+  fn test_possible_ops() {
     let instruction = Instruction { opcode: 9, a: 2, b: 1, c: 2 };
     let before = State(3, 2, 1, 1);
     let after = State(3, 2, 2, 1);
 
-    assert_eq!(instruction.possible_opcodes(before, after), 3);
+    let possible_ops = instruction.possible_ops(before, after);
+
+    assert_eq!(possible_ops.len(), 3);
+    assert!(possible_ops.iter().find(|&&op| op == Mulr).is_some());
+    assert!(possible_ops.iter().find(|&&op| op == Addi).is_some());
+    assert!(possible_ops.iter().find(|&&op| op == Seti).is_some());
   }
 }
 
